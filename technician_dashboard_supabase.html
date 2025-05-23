@@ -1,0 +1,75 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Davi Nails Technician Board</title>
+  <meta charset="UTF-8" />
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h1 { text-align: center; }
+    .tech-card {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin: 8px;
+      border-radius: 5px;
+    }
+    .working { background-color: #f8d7da; }
+    .waiting { background-color: #d3f9d8; }
+  </style>
+</head>
+<body>
+  <h1>Davi Nails Technician Board</h1>
+  <div id="board">Loading technicians...</div>
+
+  <script type="module">
+    import {{ createClient }} from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+    const supabaseUrl = 'https://fwbftwxqqmwigudzjeru.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3YmZ0d3hxcW13aWd1ZHpqZXJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMjA1OTcsImV4cCI6MjA2MzU5NjU5N30.gCAr-w2dfr5UrD3eNNWrxzUfnSsit_8MPkAvtnUD-yo';
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const board = document.getElementById('board');
+
+    async function fetchTechnicians() {{
+      const {{ data, error }} = await supabase
+        .from('technicians')
+        .select('*')
+        .order('name', {{ ascending: true }});
+
+      if (error) {{
+        board.innerHTML = 'Error loading technicians.';
+        console.error(error);
+        return;
+      }}
+
+      renderBoard(data);
+    }}
+
+    function renderBoard(techs) {{
+      board.innerHTML = '';
+      techs.forEach(tech => {{
+        const div = document.createElement('div');
+        div.className = 'tech-card ' + tech.status;
+        div.innerHTML = `<strong>${{tech.name}}</strong><br>Status: ${{tech.status}}<br>Turns: ${{tech.turn_count}}`;
+        board.appendChild(div);
+      }});
+    }}
+
+    // Live updates
+    supabase
+      .channel('realtime:technicians')
+      .on('postgres_changes', {{
+        event: '*',
+        schema: 'public',
+        table: 'technicians',
+      }}, payload => {{
+        console.log('Change received!', payload);
+        fetchTechnicians();
+      }})
+      .subscribe();
+
+    // Initial fetch
+    fetchTechnicians();
+  </script>
+</body>
+</html>
